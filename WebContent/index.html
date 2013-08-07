@@ -1,0 +1,189 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>hschoi project</title>
+
+<!-- CSS Files -->
+<link type="text/css" href="base.css" rel="stylesheet" />
+<link type="text/css" href="ForceDirected.css" rel="stylesheet" />
+
+<!--[if IE]><script language="javascript" type="text/javascript" src="../../Extras/excanvas.js"></script><![endif]-->
+
+<!-- Libraries -->
+<script language="javascript" type="text/javascript" src="jquery-1.7.1.min.js"></script>
+<script language="javascript" type="text/javascript" src="jit-yc.js"></script>
+
+<!-- graph viz -->
+<script language="javascript" type="text/javascript" src="rest-api.js"></script>
+<script language="javascript" type="text/javascript" src="model.js"></script>
+<script language="javascript" type="text/javascript" src="graph.js"></script>
+
+</head>
+
+<body onload="init()">
+
+<script language="javascript">
+var neoLocation
+var model
+var restApi
+var graph
+
+function init() {
+	neoLocation = 'http://210.107.221.101:7474/db/data'
+	//neoLocation = 'http://localhost:7474/db/data'
+	restApi = new RestApi(neoLocation)
+	model = new Model(restApi)
+	graph = new Graph({
+		addButtonClicked: doAddButton,
+		closeButtonClicked: doCloseButton,
+		nameClicked: doNameClicked,
+		edgeClicked: doEdgeClicked,
+		useButtonClicked: doUseButtonClicked,
+		collapseButtonClicked: doCollapseButtonClicked
+	},
+	{
+		widthForEdge: function(edge) {
+			return Math.log(edge.data.count) / 2.7 + 0.6
+		}
+	})
+}
+
+function doUseButtonClicked(node) {
+	var element = document.getElementById('queryText')
+	
+	var left = element.value.substring(0, element.selectionStart)
+	var right = element.value.substring(element.selectionEnd)
+	var middle = 'node(' + node.id + ') '
+	element.value = left + middle + right
+	element.selectionStart = element.selectionEnd = element.selectionStart + middle.length
+	element.focus()
+}
+
+function doAddButton(node) {
+	$('#queryText').val('start a = node(' + node.id + ')\nmatch p = a-[r]-(b)\nwhere 1=1\nreturn p')
+}
+
+function doCollapseButtonClicked(node) {
+	var removed = model.collapseNode(node)
+	
+	$.each(removed, function(index, nodeId) {
+		graph.removeNodeById(nodeId)
+	})
+}
+
+function doCloseButton(node) {
+	var removed = model.removeNodeById(node.id)
+
+	$.each(removed, function(index, nodeId) {
+		graph.removeNodeById(nodeId)
+	})
+}
+
+function doNameClicked(jitNode) {
+	var node = model.nodes[jitNode.id]
+	var html = '<font size=5><span class="detailname">' + 'node : ' + node.data.name + '</span></font>'
+
+	html += '<table class="props"><th class="props">properties:</th>'
+	$.each(node.data, function(key, value) {
+		html = html + '<tr class="props"><td class="propkey">' + key + '</td><td class="propvalue">' + value + '</td></tr>'
+	})
+	html += '</table>'
+
+	$('#inner-details').html(html)
+}
+
+function doEdgeClicked(jitEdge) {
+	var html = '<font size=5>relationship : <font size=5>'
+	if (model.edges[jitEdge.nodeFrom.id] && model.edges[jitEdge.nodeFrom.id][jitEdge.nodeTo.id]) {
+		var edge = model.edges[jitEdge.nodeFrom.id][jitEdge.nodeTo.id]
+		html += htmlForEdge(edge)
+	}
+	
+	if (model.edges[jitEdge.nodeTo.id] && model.edges[jitEdge.nodeTo.id][jitEdge.nodeFrom.id]) {
+		var edge = model.edges[jitEdge.nodeTo.id][jitEdge.nodeFrom.id]
+		html += htmlForEdge(edge)
+	}
+	
+	function htmlForEdge(edge) {
+		var nodeFrom = model.nodes[model.nodeId(edge.start)]
+		var nodeTo = model.nodes[model.nodeId(edge.end)]
+
+		var nameFrom = '<span class="detailname">' + nodeFrom.data.name + '</span>'
+		var nameTo = '<span class="detailname">' + nodeTo.data.name + '</span>'
+		var edgeName = edge.type
+		
+		var result = '<table class="props"><tr>'
+		result += '<td class="propvalue">' + nameFrom + '</td><td>= [ ' + edgeName + ' ] =&gt;</td><td class="propvalue">' + nameTo + '</td>'
+		result += '</tr></table><br/><table class="props">'
+		$.each(edge.data, function(key, value) {
+			result += '<tr class="props"><td class="propkey">' + key + '</td><td class="propvalue">' + value + '</td></tr>'
+		})
+		result += '</table><br/>'
+		
+		return result
+	}
+	
+	$('#inner-details').html(html)
+}
+
+function handleError(err) {
+	alert(err.message)
+	console.log(err)
+}
+
+function addQuery() {
+	handleResult(model.addQueryResult)
+}
+
+function replaceQuery() {
+	handleResult(model.populateFromQueryResult)
+}
+
+function handleResult(method) {
+	graph.log.write('Running query...')
+	restApi.getCypherResult($('#queryText').val(), function(result, err) {
+		if (err) {
+			handleError(err)
+		} else {
+			graph.log.write('Got response...')
+			if (result.length == 0) {
+				alert('Query returned empty set.')
+			} else if (confirmHuge(result)) {
+				method(result, function(err) {
+					if (err) {
+						handleError(err)
+					} else {
+						graph.updateModel(model)
+					}
+				})
+			}
+		}
+	})
+}
+
+function confirmHuge(result) {
+	return (result.length < 70 || confirm('Add ' + result.length + ' records to the graph?'))
+}
+</script>
+
+<div id="top">그래프 데이터베이스 패턴매칭 검색 시각화</div>
+<div id="body1">
+	<textarea id="queryText">
+start a = node(*)
+match p = a--b
+return p
+	</textArea>
+</div>
+
+<div id="body2">
+	<input type="button" value="ADD" class="qbutton" onclick="addQuery()"><br/>
+	<input type="button" value="REPLACE" class="qbutton" onclick="replaceQuery()">
+</div>
+<div id="inner-details"></div>
+
+<div id="infovis"></div>    
+<div id="log"></div>
+</body>
+</html>
+
+

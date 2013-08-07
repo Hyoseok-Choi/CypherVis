@@ -1,0 +1,75 @@
+#inner-details {
+  font-size:15px;
+}
+
+span.close {
+	color:#FF5555;
+	cursor:pointer;
+	font-weight:bold;
+	margin-left:3px;
+}
+
+span.add {
+	color:#55FF55;
+	cursor:pointer;
+	font-weight:bold;
+	margin-left:3px;
+}
+
+span.collapse {
+	color:lightblue;
+	cursor:pointer;
+	font-weight:bold;
+	margin-left:3px;
+}
+
+span.use {
+	color:yellow;
+	cursor:pointer;
+	font-weight:bold;
+	margin-left:3px;
+	vertical-align: sub;
+}
+
+span.name {
+  cursor: pointer;
+  font-size: 1.5em;
+  color: #D9418C;
+  text-align: center;
+}
+
+span.detailname {
+	color: orange;
+	font-size: 1em;
+}
+
+
+/*TOOLTIPS*/
+.tip {
+   text-align: left;
+   width:auto;
+   max-width:500px;
+}
+
+.tip-title {
+  font-size: 11px;
+  text-align:center;
+  margin-bottom:2px;
+}
+
+table.props {
+	width: 98%;
+}
+th.props {
+	font-weight: bold;
+	text-decoration: underline;
+	text-transform: uppercase;
+}
+
+td.propkey {
+	vertical-align: top;
+	font-style: italic;
+}
+td.propvalue {
+	vertical-align: top;
+}
